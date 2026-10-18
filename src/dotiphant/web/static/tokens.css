@@ -1,0 +1,198 @@
+/* Dotiphant design tokens, shared with the website: warm paper, near-black ink, one clay accent,
+   a faint mist and sage wash, frosted panels with a rim highlight, and the lens mark (a ring with a dot).
+   One grotesk at regular weight (Host Grotesk) and one mono (Fragment Mono). Hierarchy comes from size
+   and grey, not from bold. Fonts are bundled (Latin subset, SIL OFL 1.1, licenses next to the files),
+   so the app works offline.
+   Text tokens meet WCAG AA (4.5:1) on --bg, --bg-2, --surface and --accent-wash in both themes;
+   --field meets 3:1 for control borders. --accent is for graphics and large type; --accent-text is
+   the accent for small text. */
+
+@font-face {
+  font-family: "Host Grotesk";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("fonts/host-grotesk-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fragment Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/fragment-mono-latin.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces: warm paper, white panels (the website's --bg and --panel) */
+  --bg: #f2f1ed;           /* page */
+  --bg-2: #e9e8e3;         /* sunken: hover rows, code */
+  --surface: #ffffff;      /* panels, inputs, cards */
+  --glass: rgba(255, 255, 255, .6);         /* frosted bars over the page */
+  --glass-strong: rgba(255, 255, 255, .82);
+  --glass-border: rgba(255, 255, 255, .72);
+  --rim-top: rgba(255, 255, 255, .8);       /* inset highlight along a panel's top edge */
+  --rim-side: rgba(255, 255, 255, .35);
+  /* The mesh: pale washes of mist, sage, sand and clay behind the top of each page. */
+  --m1: #cfe2ea; --m2: #dae5c6; --m3: #f6e4cf; --m4: #eed6cb;
+  /* Ink */
+  --ink: #141515;          /* primary text */
+  --ink-2: #4d5153;        /* secondary text */
+  --ink-3: #5f6365;        /* muted text, metadata (AA on every surface) */
+  --ink-4: #b9bcbb;        /* decorative only: idle dots, disabled */
+  /* Lines */
+  --rule: rgba(20, 21, 21, .09);         /* hairlines (decorative) */
+  --rule-strong: rgba(20, 21, 21, .16);  /* card and control outlines */
+  --field: #85898a;                      /* input borders (3:1) */
+  /* Clay: the lens dot, the current item, search matches. Buttons stay ink. */
+  --accent: #c2512a;
+  --accent-text: #b0451f;  /* the accent for small text (AA) */
+  --on-accent: #ffffff;
+  --accent-soft: #ffdcc8;
+  --accent-wash: #fbebe2;  /* selected rows, the current day in the rail */
+  --mark-bg: #ffdcc8;      /* search match highlight */
+  --mark-ink: inherit;
+  --tint: #e2ecef;         /* monograms (ink text only) */
+  /* Status */
+  --danger: #a8261b;
+  --ok: #25734a;
+  /* Sender names: muted inks from the mesh, all AA on paper and white. --me is plain ink. */
+  --c0: #5f6365; --c1: #4c6b26; --c2: #1f6676; --c3: #8a3d6c;
+  --c4: #85580a; --c5: #3b5b9a; --c6: #a3461f; --c7: #5d4e93; --me: #141515;
+  /* Depth: a hairline and an almost invisible lift */
+  --shadow: 0 1px 2px rgba(20, 20, 20, .03), 0 8px 24px rgba(20, 20, 20, .045);
+  --shadow-float: 0 1px 2px rgba(20, 20, 20, .06), 0 16px 40px -12px rgba(20, 20, 20, .28);
+  --scrim: rgba(12, 13, 14, .88);
+  /* The lens drawings (static/brand/*.svg) read these. */
+  --lens-ink: #141515;
+  --lens-dot: #c2512a;
+  --lens-faint: #dddcd6;
+  --lens-sharp: #9a9d9c;
+  --lens-hit: #f0a27f;
+  --lens-glass: #ffffff;
+
+  /* Type: one grotesk at weight 400; 500 only for names and the wordmark. */
+  --sans: "Host Grotesk", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Fragment Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --fs-xs: 12px;     /* mono labels, counts, times */
+  --fs-sm: 14px;     /* metadata, controls (the website's fine print) */
+  --fs-base: 15px;   /* UI text */
+  --fs-read: 16px;   /* message text (the website's body) */
+  --fs-lg: 20px;     /* section heads, empty states (the website's h3) */
+  --fs-xl: 34px;     /* page titles: tool-sized, a step below the website's h2 */
+  --track-tight: -.04em;  /* large type */
+  --lh-tight: 1.02;
+  --lh: 1.5;
+  --lh-read: 1.55;
+
+  /* Space: 4px base */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --gutter: clamp(16px, 3vw, 32px);
+  --measure: 760px;  /* reading column */
+  --wide: 1080px;    /* footer */
+
+  /* Shape: the website's radii */
+  --r-sm: 5px;       /* inline code, marks */
+  --r: 8px;          /* inner panels, media */
+  --r-lg: 12px;      /* cards, floating bars */
+  --pill: 999px;     /* buttons, inputs, nav */
+  --hair: 1px solid var(--rule);
+  --line: 1px solid var(--rule-strong);
+
+  /* Focus: one ring everywhere, 2px of ink */
+  --focus: 2px solid var(--ink);
+  --focus-offset: 3px;
+
+  /* Motion: a soft expo-out */
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* Dark theme: the website's night, a near-black page with graphite panels and the clay lifted for
+   contrast. The theme switch in the footer sets data-theme on <html> (static/theme.js): "dark" forces
+   these tokens, "light" keeps the light ones above, and no attribute follows the system. CSS has no
+   way to share one block between a selector and a media query, so the two copies below must stay
+   identical. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0e0f;
+  --bg-2: #1a1b1c;
+  --surface: #151617;
+  --glass: rgba(255, 255, 255, .04);
+  --glass-strong: rgba(255, 255, 255, .08);
+  --glass-border: rgba(255, 255, 255, .09);
+  --rim-top: rgba(255, 255, 255, .12);
+  --rim-side: rgba(255, 255, 255, .04);
+  --m1: #11242a; --m2: #1a2015; --m3: #241812; --m4: #141a26;
+  --ink: #ecebe7;
+  --ink-2: #b2b3af;
+  --ink-3: #9a9b97;
+  --ink-4: #4a4c4c;
+  --rule: rgba(255, 255, 255, .08);
+  --rule-strong: rgba(255, 255, 255, .16);
+  --field: #74777a;
+  --accent: #ff8a5c;
+  --accent-text: #ff9a72;
+  --on-accent: #1c0c04;
+  --accent-soft: #4a2414;
+  --accent-wash: #261810;
+  --mark-bg: #ff8a5c;
+  --mark-ink: #1c0c04;
+  --tint: #23292b;
+  --danger: #ff9a90;
+  --ok: #8fd3a5;
+  --c0: #a9aba7; --c1: #b3c77a; --c2: #7cc0cf; --c3: #dba0c6;
+  --c4: #e3b45c; --c5: #9db8f2; --c6: #f2a07c; --c7: #b7a6ea; --me: #ecebe7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .25);
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 18px 44px -12px rgba(0, 0, 0, .7);
+  --scrim: rgba(6, 7, 8, .92);
+  --lens-ink: #ecebe7;
+  --lens-dot: #ff8a5c;
+  --lens-faint: #26282a;
+  --lens-sharp: #5d6062;
+  --lens-hit: #b4532c;
+  --lens-glass: #151617;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d0e0f;
+    --bg-2: #1a1b1c;
+    --surface: #151617;
+    --glass: rgba(255, 255, 255, .04);
+    --glass-strong: rgba(255, 255, 255, .08);
+    --glass-border: rgba(255, 255, 255, .09);
+    --rim-top: rgba(255, 255, 255, .12);
+    --rim-side: rgba(255, 255, 255, .04);
+    --m1: #11242a; --m2: #1a2015; --m3: #241812; --m4: #141a26;
+    --ink: #ecebe7;
+    --ink-2: #b2b3af;
+    --ink-3: #9a9b97;
+    --ink-4: #4a4c4c;
+    --rule: rgba(255, 255, 255, .08);
+    --rule-strong: rgba(255, 255, 255, .16);
+    --field: #74777a;
+    --accent: #ff8a5c;
+    --accent-text: #ff9a72;
+    --on-accent: #1c0c04;
+    --accent-soft: #4a2414;
+    --accent-wash: #261810;
+    --mark-bg: #ff8a5c;
+    --mark-ink: #1c0c04;
+    --tint: #23292b;
+    --danger: #ff9a90;
+    --ok: #8fd3a5;
+    --c0: #a9aba7; --c1: #b3c77a; --c2: #7cc0cf; --c3: #dba0c6;
+    --c4: #e3b45c; --c5: #9db8f2; --c6: #f2a07c; --c7: #b7a6ea; --me: #ecebe7;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .25);
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 18px 44px -12px rgba(0, 0, 0, .7);
+    --scrim: rgba(6, 7, 8, .92);
+    --lens-ink: #ecebe7;
+    --lens-dot: #ff8a5c;
+    --lens-faint: #26282a;
+    --lens-sharp: #5d6062;
+    --lens-hit: #b4532c;
+    --lens-glass: #151617;
+  }
+}

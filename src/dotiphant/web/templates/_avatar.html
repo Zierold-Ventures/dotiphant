@@ -1,0 +1,4 @@
+{# A chat's round profile photo, or its first letter on a tint when there is none. #}
+{% macro avatar(c, size, cls='') -%}
+{% if c.avatar_path %}<img class="avatar{{ ' ' ~ cls if cls }}" src="/avatar/{{ c.chat_id }}?v={{ c.photo_id }}" alt="" width="{{ size }}" height="{{ size }}" loading="lazy" decoding="async">{% else %}<span class="avatar tone{{ tone(c.chat_id) }}{{ ' ' ~ cls if cls }}" aria-hidden="true">{{ c.title|initials }}</span>{% endif %}
+{%- endmacro %}

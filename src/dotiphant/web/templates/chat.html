@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_avatar.html" import avatar %}
+{% set topic_q = '&topic=' ~ topic_id if topic_id is not none else '' %}
+{% block body_class %}page-chat{{ ' has-rail' if rail }}{% endblock %}
+{% block main_attrs %}data-chat="{{ chat.chat_id }}" data-title="{{ chat.title }}"{% if latest %} data-latest{% endif %}{% endblock %}
+{% block rail %}
+{% if rail %}
+<nav class="rail" aria-label="Timeline">
+  <h2>Timeline</h2>
+  {% for mo in rail %}
+  <div class="month">
+    <a href="/chat/{{ chat.chat_id }}?since={{ mo.first }}{{ topic_q }}#d{{ mo.first }}">{{ mo.label }}<small><span class="sr">, </span>{{ "{:,}".format(mo.count) }}<span class="sr"> message{{ "" if mo.count == 1 else "s" }}</span></small></a>
+    <div class="days">
+      {% for d in mo.days %}<a href="/chat/{{ chat.chat_id }}?since={{ d.date }}{{ topic_q }}#d{{ d.date }}" data-day="d{{ d.date }}">{{ d.label }}<small><span class="sr">, </span>{{ d.count }}<span class="sr"> message{{ "" if d.count == 1 else "s" }}</span></small></a>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</nav>
+{% endif %}
+{% endblock %}
+{% block top %}
+<div class="chat-bar">
+  {{ avatar(chat, 36, 'chat-avatar') }}
+  <h1 title="{{ chat.title }}">{{ chat.title }}</h1>
+  <button type="button" class="star{{ ' on' if chat.fav }}" data-star="{{ chat.chat_id }}"
+    title="{{ 'Remove from favorites' if chat.fav else 'Add to favorites' }}" aria-label="Favorite" aria-pressed="{{ 'true' if chat.fav else 'false' }}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.9 4.1 4.5.5-3.3 3 .9 4.4L8 11.4l-4 2.2.9-4.4-3.3-3 4.5-.5z"/></svg></button>
+  <span class="spacer"></span>
+  <button type="button" class="btn ghost ai-switch" role="switch" aria-checked="{{ 'true' if chat.ai_visible else 'false' }}" data-ai-chat="{{ chat.chat_id }}"
+    aria-label="Visible to AI apps" title="{{ 'AI apps can read this chat. Click to hide it from them.' if chat.ai_visible else 'Hidden from AI apps. Click to let them read this chat.' }}"><span class="ai-track" aria-hidden="true"></span><span><span class="wide-only">Visible to </span>AI apps</span></button>
+  <button type="button" class="btn ghost" data-copy-url="/chat/{{ chat.chat_id }}/export.md?since=7d" title="Copy the last 7 days as Markdown">Copy<span class="wide-only"> last</span> 7 days</button>
+  <a class="btn ghost" href="/chat/{{ chat.chat_id }}/export.md?download=1" title="Download the whole chat as a Markdown file">Export<span class="wide-only"> chat</span></a>
+</div>
+<p class="lede">{% if chat.source == 'whatsapp' %}<span class="src">WhatsApp</span> {% endif %}{{ KIND_LABELS.get(chat.kind, chat.kind) }}{% if chat.is_forum %} with topics{% endif %}{% if chat.username %}, @{{ chat.username }}{% endif %}{% if chat.member_count %}, {{ "{:,}".format(chat.member_count) }} members{% endif %}.
+  {{ "{:,}".format(chat.messages or 0) }} messages{% if chat.first_message_at %}, <span class="nw">{{ chat.first_message_at[:10] }}</span> to <span class="nw">{{ chat.last_message_at[:10] }}</span>{% endif %}.
+  {% if chat.source == 'whatsapp' %}Imported from a WhatsApp export.{% endif %}
+  {% if has_predecessor %}Includes the history from before the group was upgraded.{% endif %}
+  {% if chat.migrated_to %}This group was upgraded; <a href="/chat/{{ chat.migrated_to }}">open the new group</a>.{% endif %}
+  Times in UTC.</p>
+<div class="tools">
+  <form class="find grow" action="/search" role="search">
+    <input type="hidden" name="chat" value="{{ chat.chat_id }}">
+    <input type="search" name="q" placeholder="Search this chat" aria-label="Search this chat" aria-keyshortcuts="/">
+  </form>
+  {% if chat.topics %}
+  <form action="/chat/{{ chat.chat_id }}" class="inline">
+    <select name="topic" aria-label="Topic" data-autosubmit>
+      <option value="">All topics</option>
+      {% for t in chat.topics %}<option value="{{ t.topic_id }}"{{ ' selected' if t.topic_id == topic_id }}>{{ t.title }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
+  <form action="/chat/{{ chat.chat_id }}" class="inline jump" title="Jump to a date">
+    {% if topic_id is not none %}<input type="hidden" name="topic" value="{{ topic_id }}">{% endif %}
+    <label><span aria-hidden="true">Jump to</span> <input type="date" name="since" aria-label="Jump to date" value="{{ since[:10] if since else '' }}" data-autosubmit></label>
+  </form>
+  {% if not latest %}<a class="btn" href="/chat/{{ chat.chat_id }}{{ '?topic=' ~ topic_id if topic_id is not none else '' }}">Jump to latest</a>{% endif %}
+</div>
+{% if not demo and chat.source != 'whatsapp' and (missing_media or auto_download) %}
+<p class="media-note">{% if missing_media %}{{ missing_media }} attachment{{ '' if missing_media == 1 else 's' }} not downloaded yet. <button type="button" class="btn ghost inline-btn" data-media="{{ chat.chat_id }}" {{ 'disabled' if job.running }}>Download attachments ({{ missing_media }})</button>{% endif %}
+  <label class="auto-dl" title="Every sync downloads this chat's photos and files, up to 50 MB each"><input type="checkbox" data-auto-download="{{ chat.chat_id }}"{{ ' checked' if auto_download }}> Download automatically</label></p>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div id="messages" data-at="{{ ('m' ~ chat.chat_id ~ '_' ~ at) if at else '' }}">
+{% include "_messages.html" %}
+</div>
+{% if not items %}
+<div class="state">
+  <h2>No messages here yet</h2>
+  <p>{% if since %}Nothing from this date on. Pick an earlier date or jump to the latest messages.{% else %}Use Refresh chat to fetch messages from Telegram.{% endif %}</p>
+</div>
+{% endif %}
+{% if newer %}
+<a class="more" href="/chat/{{ chat.chat_id }}?after={{ last.message_id }}{{ '&after_chat=' ~ last.chat_id if last.chat_id != chat.chat_id else '' }}{{ topic_q }}">Load newer messages</a>
+{% endif %}
+<div class="pickbar" role="region" aria-label="Selection" hidden>
+  <span data-count></span>
+  <button type="button" data-act="copy" class="primary">Copy as Markdown</button>
+  <button type="button" data-act="clear" title="Clear the selection (Esc)">Clear</button>
+</div>
+{% endblock %}

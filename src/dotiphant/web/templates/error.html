@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% set missing = (title or "Not found") == "Not found" %}
+{% set text = message or "Not found." %}
+{% set parts = text.split(". ", 1) %}
+{% set head = "This page is not here." if text == "Not found." else (parts[0] ~ ("." if parts|length > 1 else "")) %}
+{% block styles %}<link rel="stylesheet" href="/static/setup.css">{% endblock %}
+{% block body_class %}er-page{% endblock %}
+{% block content %}
+{% if missing %}
+<div class="er er-404 idle-state" role="alert">
+  <figure class="lens-art is-empty" aria-hidden="true">{{ art('lens') }}</figure>
+  <div>
+    <h1>{{ head }}</h1>
+    {% if parts|length > 1 %}<p>{{ parts[1] }}</p>{% endif %}
+    <p>Your chats are fine. The link may be out of date, or the chat was left out of the archive.</p>
+    <div class="su-actions">
+      <a class="btn primary" href="/">Back to your chats</a>
+      <a class="btn" href="/search">Search the archive</a>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="er" role="alert">
+  <h1>{{ head }}</h1>
+  {% if parts|length > 1 %}<p>{{ parts[1] }}</p>{% endif %}
+  <div class="su-actions">
+    <a class="btn primary" href="/">Back to all chats</a>
+    <a class="btn" href="/search">Search the archive</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

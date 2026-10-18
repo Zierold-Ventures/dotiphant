@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+.pytest_cache
+.python-version
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+dist
+docs
+packaging
+site
+tests
+*.db
+*.db-wal
+*.db-shm
+*.session

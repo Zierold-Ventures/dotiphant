@@ -1,0 +1,86 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "site/**", "**.md"]
+  pull_request:
+    paths-ignore: ["docs/**", "site/**", "**.md"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # github.workflow is the caller's name when release.yml calls this file, so a
+  # release run never queues behind, or cancels, the test run for the same push.
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - name: pyflakes
+        run: uvx pyflakes src tests
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      # Pull requests: oldest and newest Python on Linux. Pushes to main: every
+      # supported Python on Linux. Releases (called from release.yml): also macOS,
+      # whose minutes cost ten times as much.
+      matrix:
+        include: >-
+          ${{ fromJSON(
+            github.workflow == 'release' && '[{"os":"ubuntu-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.13"},{"os":"ubuntu-latest","python":"3.14"},{"os":"macos-latest","python":"3.14"}]' ||
+            github.event_name == 'pull_request' && '[{"os":"ubuntu-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.14"}]' ||
+            '[{"os":"ubuntu-latest","python":"3.12"},{"os":"ubuntu-latest","python":"3.13"},{"os":"ubuntu-latest","python":"3.14"}]'
+          ) }}
+    env:
+      DOTIPHANT_SECRETS: file
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - run: uv run pytest -q
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Check that templates and static files ship in the wheel
+        run: |
+          set -euo pipefail
+          wheel=$(ls dist/*.whl)
+          unzip -l "$wheel" > wheel.txt
+          for f in dotiphant/web/templates/base.html dotiphant/web/templates/setup.html \
+                   dotiphant/web/static/app.css dotiphant/web/static/app.js dotiphant/py.typed; do
+            grep -q " $f\$" wheel.txt || { echo "missing from wheel: $f"; exit 1; }
+          done
+          unzip -p "$wheel" '*.dist-info/entry_points.txt' | grep -q '^dotiphant = dotiphant.cli:main'
+          unzip -p "$wheel" '*.dist-info/entry_points.txt' | grep -q '^phant = dotiphant.cli:main'
+      - name: Smoke test the built wheel
+        run: |
+          uv venv /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          /tmp/smoke/bin/dotiphant --version
+          /tmp/smoke/bin/phant --version
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-check
+          path: dist/

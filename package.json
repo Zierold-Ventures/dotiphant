@@ -1,0 +1,14 @@
+{
+  "name": "dotiphant-repo",
+  "private": true,
+  "description": "Repo tooling only: git hooks and commit message checks. The Python package lives in pyproject.toml, the website in site/.",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "husky": "^9.1.7"
+  }
+}

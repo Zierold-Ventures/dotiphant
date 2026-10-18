@@ -1,0 +1,50 @@
+{% from "_avatar.html" import avatar %}
+{% set topic_q = '&topic=' ~ topic_id if topic_id is not none else '' %}
+{% if older %}
+<a class="more" data-older href="/chat/{{ info.chat_id }}?before={{ first.message_id }}{{ '&before_chat=' ~ first.chat_id if first.chat_id != info.chat_id else '' }}{{ topic_q }}">Load older messages</a>
+{% endif %}
+{% for it in items %}
+{% if it.type == 'day' %}
+<div class="day" id="{{ it.id }}" role="heading" aria-level="2"><button type="button" class="daypill" title="Select every message of this day">{{ it.label }}<span class="sr">, select all messages of this day</span></button></div>
+{% elif it.type == 'service' %}
+{% set m = it.m %}
+<div class="svc" id="{{ m.anchor }}"><span class="stamp">{{ m.time }}</span><p>{{ m.service_text or 'Service message' }}{% if m.reply_href %} (<a href="{{ m.reply_href }}">view</a>){% endif %}</p></div>
+{% else %}
+{% set m = it.m %}
+<article class="msg{{ ' cont' if m.cont }}{{ ' out' if m.out }}" id="{{ m.anchor }}" data-chat="{{ m.chat_id }}" data-id="{{ m.message_id }}">
+  <input type="checkbox" class="pick" aria-label="Select message from {{ m.sender }} at {{ m.time }}" title="Select (shift-click selects a range)">
+  <a class="stamp" href="#{{ m.anchor }}" title="{{ m.date }}, {{ m.ref }}, link to this message"><time datetime="{{ m.date }}">{{ m.time }}</time></a>
+  <div class="body">
+  {% if not m.cont %}
+  <div class="meta">
+    {{ avatar(m.face, 20, 'who-avatar') }}<span class="who {{ m.color }}">{{ m.sender }}</span>
+    {% if m.show_topic %}<a class="topic" href="?topic={{ m.topic_id }}"><span class="sr">topic </span>{{ m.topic }}</a>{% endif %}
+    {% if m.edit_date %}<span class="edited" title="Edited {{ m.edit_date }}">edited</span>{% endif %}
+  </div>
+  {% elif m.edit_date %}
+  <div class="meta"><span class="edited" title="Edited {{ m.edit_date }}">edited</span></div>
+  {% endif %}
+  {% if m.forwarded_from %}<div class="fwd">Forwarded from <b>{{ m.forwarded_from }}</b></div>{% endif %}
+  {% if m.reply %}<a class="reply" href="{{ m.reply.href }}">{% if m.reply.sender %}<b>{{ m.reply.sender }}</b> {% endif %}{{ m.reply.text }}</a>{% endif %}
+  {% if m.text %}<div class="text">{{ m.text|linkify }}</div>{% endif %}
+  {% set md = m.media %}
+  {% if md %}
+    {% if md.show == 'image' %}
+    <a class="att" href="{{ md.url }}" target="_blank" data-zoom><img class="thumb" src="{{ md.url }}" loading="lazy" alt="{{ md.label }} from {{ m.sender }}"></a>
+    {% elif md.show == 'video' %}
+    <video class="att player" src="{{ md.url }}" controls preload="metadata"></video>
+    {% elif md.show == 'audio' %}
+    <audio class="att" src="{{ md.url }}" controls preload="none"></audio>
+    {% elif md.show == 'file' %}
+    <a class="file" href="{{ md.url }}" target="_blank" rel="noopener"><span class="file-name">{{ md.label }}</span>{% if md.size %} <small>{{ md.size|size }}</small>{% endif %}</a>
+    {% elif md.show == 'missing' %}
+    {% if demo %}<span class="file missing" title="{{ demo_note }}"><span class="file-name">{{ md.label }}</span>{% if md.size %} <small>{{ md.size|size }}</small>{% endif %} <small>Not downloaded</small></span>
+    {% else %}<button type="button" class="file missing" data-media="{{ m.chat_id }}" data-media-msg="{{ m.message_id }}" title="Download this file from Telegram"><span class="file-name">{{ md.label }}</span>{% if md.size %} <small>{{ md.size|size }}</small>{% endif %} <small class="get">Download</small></button>{% endif %}
+    {% else %}
+    <span class="file note">{{ md.label }}</span>
+    {% endif %}
+  {% endif %}
+  </div>
+</article>
+{% endif %}
+{% endfor %}

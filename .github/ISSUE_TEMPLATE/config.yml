@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/Zierold-Ventures/dotiphant/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue.
+  - name: Security and privacy docs
+    url: https://github.com/Zierold-Ventures/dotiphant/blob/main/docs/security.md
+    about: What Dotiphant stores, who can reach it, and how to wipe it.

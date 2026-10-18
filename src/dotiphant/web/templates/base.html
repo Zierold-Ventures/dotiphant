@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f2f1ed" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0e0f" media="(prefers-color-scheme: dark)">
+<meta name="dotiphant-token" content="{{ csrf_token }}">
+<title>{% block title %}{{ title or "Dotiphant" }}{% endblock %}</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/app.css">
+{% block styles %}{% endblock %}
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<script src="/static/app.js" defer></script>
+{% block scripts %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="skip" href="#content">Skip to content</a>
+{% set path = request.url.path %}
+<header class="mast">
+  {% block nav %}
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="/" aria-label="Dotiphant, all chats">{{ art('mark', 'logo') }}<span aria-hidden="true">dotiphant</span></a>
+    <span class="nav-links">
+      <a href="/"{{ ' aria-current="page"'|safe if path == '/' or path.startswith('/chat/') }}>Chats</a>
+      <a href="/search"{{ ' aria-current="page"'|safe if path == '/search' }}>Search</a>
+      <a href="/connect"{{ ' aria-current="page"'|safe if path == '/connect' }}>Connect AI</a>
+    </span>
+    <span class="spacer"></span>
+    <span id="job" class="job{{ ' busy' if job.running }}" data-running="{{ 1 if job.running else 0 }}">{% if job.running %}Refreshing...{% endif %}</span>
+    {% if demo %}
+    <span class="note" title="{{ demo_note }} These chats are made up, so there is nothing to sync.">Demo archive<span class="note-more">, refresh not available</span></span>
+    {% elif chat and chat.source == 'whatsapp' %}
+    <span class="note">Imported from a WhatsApp export<span class="note-more">, refresh not available</span></span>
+    {% elif not empty_archive %}
+    <button type="button" class="btn" data-refresh="{{ chat.chat_id if chat else '' }}" {{ 'disabled' if job.running }}
+      title="{{ 'Fetch new messages for this chat from Telegram' if chat else 'Fetch new messages for every chat from Telegram' }}">Refresh<span class="wide-only"> {{ 'chat' if chat else 'all' }}</span></button>
+    {% endif %}
+  </nav>
+  {% endblock %}
+</header>
+<div class="frame">
+{% block rail %}{% endblock %}
+<main {% block main_attrs %}{% endblock %}>
+<div class="top">
+  {% block top %}{% endblock %}
+</div>
+<div id="content" tabindex="-1">
+{% block content %}{% endblock %}
+</div>
+</main>
+</div>
+<footer class="foot">
+  <p class="foot-note">Dotiphant {{ version }}<span class="foot-more">, unofficial, uses the Telegram API</span></p>
+  <fieldset class="theme" data-theme-switch hidden>
+    <legend class="sr">Theme</legend>
+    <label><input type="radio" name="dotiphant-theme" value="system" checked><span>System</span></label>
+    <label><input type="radio" name="dotiphant-theme" value="light"><span>Light</span></label>
+    <label><input type="radio" name="dotiphant-theme" value="dark"><span>Dark</span></label>
+  </fieldset>
+</footer>
+<div id="toast" class="toast" hidden></div>
+<div id="announce" class="sr" role="status" aria-live="polite"></div>
+<div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image, press Escape to close" tabindex="-1" hidden><img alt=""></div>
+</body>
+</html>

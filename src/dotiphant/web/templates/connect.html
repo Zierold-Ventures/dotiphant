@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block styles %}<link rel="stylesheet" href="/static/setup.css">{% endblock %}
+{% block body_class %}cx-page{% endblock %}
+{% block content %}
+<div class="cx">
+<header class="cx-head">
+  <h1>Connect an AI assistant</h1>
+  <p>Give Claude, Codex or Cursor read-only access to this archive.<br>Then ask in plain words, and it searches your chats for the answer.</p>
+</header>
+
+<div class="cx-grid">
+  <section class="cx-sec" aria-labelledby="cx-run">
+    <h2 id="cx-run"><span class="cx-n" aria-hidden="true">1</span> Run one command</h2>
+    <div class="cx-term" role="group" aria-label="Commands">
+      <ul class="cx-cmds">
+        {% for s in snippets %}
+        <li>
+          <span class="cx-app">{{ s.name }}</span>
+          <code id="cmd-{{ s.key }}">{{ s.command }}</code>
+          <button type="button" class="btn ghost cx-copy" data-copy-target="cmd-{{ s.key }}" aria-label="Copy the {{ s.name }} command">Copy</button>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <p class="cx-after">Pick your app, run its command in a terminal, then quit and reopen the app.</p>
+  </section>
+
+  <section class="cx-sec" aria-labelledby="cx-ask">
+    <h2 id="cx-ask"><span class="cx-n" aria-hidden="true">2</span> Ask about your chats</h2>
+    <ul class="cx-asks">
+      <li>What did we agree with Acme about the launch date?</li>
+      <li>Summarize this week in Kestrel Protocol Builders and list open questions.</li>
+      <li>What did I miss this week, and who is waiting for my reply?</li>
+    </ul>
+  </section>
+</div>
+
+<section class="cx-safe" aria-labelledby="cx-safe-h">
+  <h2 id="cx-safe-h">What the assistant can and cannot do</h2>
+  <dl>
+    <div>
+      <dt>Read-only</dt>
+      <dd>It can search and read your archive and start a refresh. It cannot send, edit or delete anything in Telegram.</dd>
+    </div>
+    <div>
+      <dt>Local</dt>
+      <dd>The archive stays on this computer. Messages reach the AI service only when the assistant reads them to answer you.</dd>
+    </div>
+    <div>
+      <dt>Careful with chat text</dt>
+      <dd>Messages are marked as untrusted, so instructions hidden in a chat are not followed as commands.</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="cx-safe cx-access" aria-labelledby="cx-access-h">
+  <h2 id="cx-access-h">Which chats the assistant may read</h2>
+  {% if access.mode == 'all' %}
+  <p><b>All chats, except the ones you hide.</b> {{ "{:,}".format(access.visible) }} of {{ "{:,}".format(access.total) }} chats are visible to AI apps. To keep a chat away from them, turn off <i>Visible to AI apps</i> on the chat's page, or run <code>dotiphant ai hide CHAT</code>.</p>
+  <p><button type="button" class="linkish" data-ai-mode="selected">Switch to only the chats I choose</button></p>
+  {% else %}
+  <p><b>Only the chats you choose.</b> {{ "{:,}".format(access.visible) }} of {{ "{:,}".format(access.total) }} chats are visible to AI apps. New chats stay hidden. To allow one, turn on <i>Visible to AI apps</i> on the chat's page, or run <code>dotiphant ai show CHAT</code>.</p>
+  <p><button type="button" class="linkish" data-ai-mode="all">Switch to all chats</button></p>
+  {% endif %}
+  <p>When an assistant reads a chat, the messages of the people in it go to the AI service you use. Hidden chats are never listed, searched or read by AI apps. This viewer and the <code>dotiphant</code> command still show every chat.</p>
+</section>
+
+<section class="cx-manual" aria-labelledby="cx-hand">
+  <h2 id="cx-hand">Set it up by hand</h2>
+  <p>Prefer to edit the settings yourself? Paste the matching snippet into the app's MCP settings. MCP is the standard way AI apps use local tools.</p>
+  {% for s in snippets %}
+  <details>
+    <summary>{{ s.name }}</summary>
+    <div class="cx-snip"><pre id="snip-{{ s.key }}" tabindex="0">{{ s.text }}</pre><button type="button" class="btn" data-copy-target="snip-{{ s.key }}" aria-label="Copy the {{ s.name }} snippet">Copy</button></div>
+  </details>
+  {% endfor %}
+</section>
+</div>
+{% endblock %}

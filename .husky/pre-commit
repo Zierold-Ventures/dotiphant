@@ -1,0 +1,58 @@
+# Fast checks on staged files only. Skip all hooks once with HUSKY=0.
+
+# Husky sets a repo-local core.hooksPath, which hides any global hooks. Run the global one first.
+g=$(git config --global --type=path core.hooksPath || true)
+if [ -n "$g" ] && [ -x "$g/pre-commit" ]; then "$g/pre-commit" "$@" || exit $?; fi
+
+export UV_DEFAULT_INDEX=https://pypi.org/simple
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "$staged" ]; then exit 0; fi
+fail=0
+
+# 1. Files that look like secrets: Telegram sessions, .env files, anything under secrets/.
+bad=$(printf '%s\n' "$staged" | grep -E '(^|/)([^/]+\.session|\.env(\.[^/]*)?|secrets/.*)$' | grep -vE '(^|/)\.env\.(example|sample)$' || true)
+if [ -n "$bad" ]; then
+  echo "pre-commit: these files look like secrets and must not be committed:"
+  printf '%s\n' "$bad" | sed 's/^/  /'
+  echo "  Unstage them with: git restore --staged <file>"
+  fail=1
+fi
+
+# 2. pyflakes, when Python files are staged.
+if printf '%s\n' "$staged" | grep -qE '\.py$'; then
+  uvx --quiet pyflakes src tests || fail=1
+fi
+
+# 3. shellcheck on the installer, when it is staged.
+if printf '%s\n' "$staged" | grep -qxE 'install\.sh|site/public/install\.sh'; then
+  if command -v shellcheck >/dev/null 2>&1; then
+    shellcheck install.sh || fail=1
+  else
+    echo "pre-commit: shellcheck not installed, skipping the installer lint (brew install shellcheck)"
+  fi
+  # 4. The site serves a copy of the installer. Compare the staged versions.
+  a=$(git show :install.sh 2>/dev/null | git hash-object --stdin)
+  b=$(git show :site/public/install.sh 2>/dev/null | git hash-object --stdin)
+  if [ "$a" != "$b" ]; then
+    echo "pre-commit: install.sh and site/public/install.sh differ. Copy one over the other and stage both:"
+    echo "  cp install.sh site/public/install.sh && git add install.sh site/public/install.sh"
+    fail=1
+  fi
+fi
+
+# 5. ASCII punctuation in docs: no em or en dash, curly quotes or ellipsis character.
+#    Emoji are not checked, so the awesome-list line in docs/listing.md passes.
+docs=$(printf '%s\n' "$staged" | grep -E '^(docs/.*\.md|README\.md|CONTRIBUTING\.md|CHANGELOG\.md)$' || true)
+pat=$(printf '\342\200[\223\224\230\231\234\235\246]')
+report=$(printf '%s\n' "$docs" | while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  hits=$(git show ":$f" | LC_ALL=C grep -n "$pat" || true)
+  if [ -n "$hits" ]; then printf '%s\n' "$hits" | head -5 | sed "s|^|  $f:|"; fi
+done)
+if [ -n "$report" ]; then
+  echo "pre-commit: non-ASCII punctuation in docs. Use - , ; : ( ) ... and straight quotes instead:"
+  printf '%s\n' "$report"
+  fail=1
+fi
+
+exit $fail

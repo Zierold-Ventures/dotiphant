@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% set labels = {"credentials": "API key", "login": "Log in", "archive": "What to archive", "sync": "First sync", "connect": "Connect your AI"} %}
+{% set blurbs = {"credentials": "Your own key from Telegram", "login": "Scan a code with your phone", "archive": "Which chats, how far back, AI access", "sync": "Copy your chats to this computer", "connect": "Let your AI app read the archive"} %}
+{% set check %}<svg class="su-check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>{% endset %}
+{% set idx = steps.index(step) %}
+{% block title %}{{ labels[step] }}: Set up Dotiphant{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/setup.css">{% endblock %}
+{% block scripts %}<script src="/static/setup.js" defer></script>{% endblock %}
+{% block body_class %}su-page{% endblock %}
+{% block nav %}
+<nav class="nav su-nav" aria-label="Main">
+  {% if ov.chats %}<a class="brand" href="/" aria-label="Dotiphant, all chats">{{ art('mark', 'logo') }}<span aria-hidden="true">dotiphant</span></a>{% else %}<span class="brand" role="img" aria-label="Dotiphant">{{ art('mark', 'logo') }}<span aria-hidden="true">dotiphant</span></span>{% endif %}
+</nav>
+{% endblock %}
+{% block content %}
+<div class="su" id="setup" data-step="{{ step }}" data-logged-in="{{ 1 if ov.logged_in else 0 }}">
+
+<header class="su-aside">
+  <p class="su-title">Set up Dotiphant</p>
+  <p class="su-lede">About five minutes. Everything stays on this computer, and you can come back to any step later.</p>
+
+    <ol class="su-steps" aria-label="Setup steps">
+    {% for s in steps %}
+    {% set done = loop.index0 < steps.index(current) %}
+    {% set reachable = loop.index0 <= steps.index(current) or (ov.logged_in and loop.index0 > 1) %}
+    <li class="{{ 'on' if s == step }}{{ ' done' if done }}">
+      {% if reachable and s != step %}<a href="/setup?step={{ s }}">{% else %}<span class="su-step"{{ ' aria-current="step"'|safe if s == step }}>{% endif %}
+        <span class="su-n" aria-hidden="true">{{ check if done and s != step else loop.index }}</span>
+        <span class="su-l"><span class="lbl">{{ labels[s] }}</span><span class="su-b">{{ blurbs[s] }}</span></span>{% if done %}<span class="sr"> (done)</span>{% endif %}
+      {% if reachable and s != step %}</a>{% else %}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+
+</header>
+
+<div class="su-main">
+
+{% if step == "credentials" %}
+<section class="su-panel">
+  <p class="su-of">Step 1 of 5</p>
+  <h1 tabindex="-1">Your own Telegram API key</h1>
+  {% if ov.credentials %}
+  <div id="creds-saved" {{ 'hidden' if request.query_params.get('replace') == '1' }}>
+    <p class="ok">{{ check }}Your API id and hash are saved.</p>
+    {% if ov.credentials_from_env %}<p class="su-small">They come from the DOTIPHANT_API_ID and DOTIPHANT_API_HASH environment variables, which win over anything saved here.</p>{% endif %}
+    <div class="su-actions">
+      <a class="btn primary" href="/setup?step=login">Continue</a>
+      <button type="button" class="btn" data-show="creds-form" data-hide="creds-saved">Replace them</button>
+    </div>
+  </div>
+  {% endif %}
+  <form id="creds-form" class="su-form" autocomplete="off" novalidate {{ 'hidden' if ov.credentials and request.query_params.get('replace') != '1' }}>
+    <p class="su-intro">Telegram lets an app read your chats only with an API key of its own. You make yours once, for free, on Telegram's website. It takes about a minute.</p>
+    <ol class="su-howto">
+      <li><span>Open <a href="{{ api_page }}" target="_blank" rel="noopener noreferrer">my.telegram.org</a> and log in with your phone number. Telegram sends the code to your Telegram app.</span></li>
+      <li><span>Click <b>API development tools</b> and fill in the form. Any app name works, like "Dotiphant Archive". Platform: Desktop.</span></li>
+      <li><span>Copy <b>App api_id</b> and <b>App api_hash</b> into the fields below.</span></li>
+    </ol>
+    <div class="su-fields">
+      <div class="su-field">
+        <label class="su-fl" for="api_id">api_id</label>
+        <input id="api_id" name="api_id" inputmode="numeric" pattern="\d{3,12}" maxlength="12" placeholder="1234567" required spellcheck="false" autocomplete="off">
+        <p class="field-error" id="api_id-error" hidden></p>
+      </div>
+      <div class="su-field">
+        <label class="su-fl" for="api_hash">api_hash</label>
+        <input id="api_hash" name="api_hash" pattern="[0-9a-fA-F]{32}" maxlength="64" placeholder="32 letters and digits" required spellcheck="false" autocomplete="off" autocapitalize="off">
+        <p class="field-error" id="api_hash-error" hidden></p>
+      </div>
+    </div>
+    <p class="form-error" role="alert" hidden></p>
+    <div class="su-actions">
+      <button class="btn primary" type="submit">Save and continue</button>
+      {% if ov.credentials %}<a class="btn" href="/setup?step=credentials">Keep the saved ones</a>{% endif %}
+    </div>
+    {% if ov.credentials %}<p class="su-small">Replacing them logs you out of Dotiphant here, so you log in again in the next step.</p>{% endif %}
+    <p class="su-small su-tip">If my.telegram.org only says "ERROR", try again in a few minutes, without a VPN, or in another browser.</p>
+  </form>
+</section>
+
+{% elif step == "login" %}
+<section class="su-panel" id="login" data-state="{{ login.state }}">
+  <p class="su-of">Step 2 of 5</p>
+  <h1 tabindex="-1">Log in to Telegram</h1>
+  {% if ov.logged_in %}
+  <p class="ok">{{ check }}You are logged in.</p>
+  <div class="su-actions"><a class="btn primary" href="/setup?step=archive">Continue</a></div>
+  {% else %}
+  <p class="su-intro">Dotiphant logs in as you, the way Telegram Desktop does, and only reads. It never sends, edits or deletes anything.</p>
+
+  <div data-panel="starting">
+    <p class="wait">Connecting to Telegram...</p>
+  </div>
+
+  <div data-panel="waiting_scan" hidden class="su-qr">
+    <figure class="su-qr-fig">
+      <div class="su-qr-stack"><div class="su-qr-frame"><img id="qr" alt="Login QR code. Scan it with the Telegram app on your phone, or log in with your phone number instead." width="220" height="220"></div></div>
+      <figcaption><span class="su-bar" aria-hidden="true"><i data-qr-bar></i></span><span data-qr-time>New code every half minute</span></figcaption>
+    </figure>
+    <div class="su-qr-text">
+      <ol class="su-howto">
+        <li><span>Open Telegram on your phone.</span></li>
+        <li><span>Go to <b>Settings</b> &gt; <b>Devices</b> &gt; <b>Link Desktop Device</b>.</span></li>
+        <li><span>Point the camera at this code.</span></li>
+      </ol>
+      <p class="su-small">The code refreshes by itself. Afterwards Dotiphant shows up in your Telegram devices, where you can end it at any time.</p>
+      <p class="su-alt"><button type="button" class="linkish" data-login-method="phone">Log in with your phone number instead</button></p>
+    </div>
+  </div>
+
+  <form data-panel="need_password" hidden class="su-form su-narrow" data-answer="password" autocomplete="off">
+    <p class="ok">{{ check }}Code scanned.</p>
+    <p>Your account has a two-step verification password. Type it here. Dotiphant uses it once to log in and does not store it.</p>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+    <p class="hint" role="status"></p>
+    <div class="su-actions"><button class="btn primary" type="submit" data-busy="Checking...">Log in</button></div>
+  </form>
+
+  <form data-panel="phone" hidden class="su-form su-narrow" id="phone-form" autocomplete="off">
+    <p>Telegram sends a login code to your Telegram app, or by SMS.</p>
+    <label>Phone number <input type="tel" name="phone" placeholder="+49 151 12345678" autocomplete="tel" required></label>
+    <p class="form-error" role="alert" hidden></p>
+    <div class="su-actions">
+      <button class="btn primary" type="submit" data-busy="Sending...">Send the code</button>
+      <button type="button" class="linkish" data-login-method="qr">Scan a QR code instead</button>
+    </div>
+  </form>
+
+  <form data-panel="need_code" hidden class="su-form su-narrow" data-answer="code" autocomplete="off">
+    <p>Type the code Telegram just sent you. Look in the Telegram app first: it usually arrives there, as a message from Telegram.</p>
+    <label>Code <input name="code" class="su-code" inputmode="numeric" autocomplete="one-time-code" required></label>
+    <p class="hint" role="status"></p>
+    <div class="su-actions"><button class="btn primary" type="submit" data-busy="Checking...">Log in</button></div>
+  </form>
+
+  <div data-panel="checking" hidden><p class="wait">Checking with Telegram...</p></div>
+
+  <div data-panel="done" hidden>
+    <p class="ok">{{ check }}Logged in as <b data-name></b>.</p>
+    <div class="su-actions"><a class="btn primary" href="/setup?step=archive">Continue</a></div>
+  </div>
+
+  <div data-panel="error" hidden class="su-problem">
+    <p class="su-problem-h">The login did not go through</p>
+    <p class="form-error" data-error role="alert"></p>
+    <div class="su-actions">
+      <a class="btn primary" data-back-creds href="/setup?step=credentials&amp;replace=1" hidden>Replace the API id and hash</a>
+      <button type="button" class="btn" data-login-restart>Try again</button>
+      <button type="button" class="linkish" data-login-method="phone">Log in with your phone number</button>
+    </div>
+  </div>
+
+  <div class="su-foot" data-cancel-row hidden>
+    <button type="button" class="linkish su-quiet" data-login-restart>Start the login over</button>
+  </div>
+  {% endif %}
+</section>
+
+{% elif step == "archive" %}
+<section class="su-panel">
+  <p class="su-of">Step 3 of 5</p>
+  <h1 tabindex="-1">What should Dotiphant archive?</h1>
+  <p class="su-intro">Chats you leave out are not downloaded. You can change this later.</p>
+  <form id="archive-form" class="su-form">
+    <fieldset class="su-set">
+      <legend>Kinds of chats</legend>
+      <label class="su-opt"><input type="checkbox" name="people" {{ 'checked' if ov.settings.people }}><span><b>People</b><small>Your one-to-one chats.</small></span></label>
+      <label class="su-opt"><input type="checkbox" name="groups" {{ 'checked' if ov.settings.groups }}><span><b>Groups</b><small>Groups and supergroups you are in.</small></span></label>
+      <label class="su-opt"><input type="checkbox" name="channels" {{ 'checked' if ov.settings.channels }}><span><b>Channels</b><small>Broadcast channels you follow. Often large.</small></span></label>
+    </fieldset>
+    <fieldset class="su-set">
+      <legend>How far back should the first sync go?</legend>
+      {% set days = ov.settings.history_days %}
+      <label class="su-opt su-opt-num"><input type="radio" name="span" value="days" {{ 'checked' if days }}><span><b>The last <input type="number" name="history_days" min="1" max="100000" value="{{ days or 365 }}" aria-label="Number of days"> days</b><small>Quicker. Newer messages keep coming in with every sync.</small></span></label>
+      <label class="su-opt"><input type="radio" name="span" value="all" {{ 'checked' if not days }}><span><b>All history</b><small>Can take much longer on big accounts.</small></span></label>
+    </fieldset>
+    <fieldset class="su-set">
+      <legend>Which chats may AI apps read?</legend>
+      {% set ai = ov.settings.ai_access %}
+      <label class="su-opt"><input type="radio" name="ai_access" value="all" {{ 'checked' if ai != 'selected' }}><span><b>All</b><small>Your AI app can read every chat. You can hide single chats later.</small></span></label>
+      <label class="su-opt"><input type="radio" name="ai_access" value="selected" {{ 'checked' if ai == 'selected' }}><span><b>Only the ones I choose</b><small>Every chat stays hidden from AI apps until you allow it: turn on <i>Visible to AI apps</i> on a chat's page, or run <code>dotiphant ai show CHAT</code>.</small></span></label>
+    </fieldset>
+    <p class="form-error" role="alert" hidden></p>
+    <div class="su-actions"><button class="btn primary" type="submit">Save and continue</button></div>
+  </form>
+</section>
+
+{% elif step == "sync" %}
+<section class="su-panel" id="sync">
+  <p class="su-of">Step 4 of 5</p>
+  <h1 tabindex="-1">First sync</h1>
+  <p class="su-intro">Dotiphant now copies your chats from Telegram to this computer. Small accounts take a minute, big ones up to an hour. You can keep going while it runs, and even close this page: the next sync continues where this one stopped.</p>
+  <figure class="lens-art su-lens{{ ' walking' if job.running }}" data-sync-lens aria-hidden="true" {{ 'hidden' if not (job.running or ov.synced) }}>{{ art('lens') }}<figcaption>Reading new messages. Only reading.</figcaption></figure>
+  <div class="su-progress" data-sync-progress {{ 'hidden' if not job.running }}>
+    <dl class="su-figs" aria-hidden="true">
+      <div><dt>Chats</dt><dd><span data-sync-chats>{{ "{:,}".format(job.chats_done or 0) }}</span><small data-sync-of>{% if job.chats_total %} of {{ "{:,}".format(job.chats_total) }}{% endif %}</small></dd></div>
+      <div><dt>Messages</dt><dd><span data-sync-msgs>{{ "{:,}".format(job.new_messages or 0) }}</span></dd></div>
+    </dl>
+    <progress max="1" value="0" aria-label="Sync progress"></progress>
+    <p class="su-small" data-sync-text>Starting...</p>
+  </div>
+  {% if ov.synced and not job.running %}<p class="ok">{{ check }}Sync done: {{ "{:,}".format(ov.chats) }} chat{{ '' if ov.chats == 1 else 's' }} in the archive, ready to search.</p>{% endif %}
+  <p class="form-error" role="alert" hidden></p>
+  <div class="su-actions">
+    {% if ov.synced and not job.running %}
+    <a class="btn primary" data-sync-next href="/setup?step=connect">Continue</a>
+    <button type="button" class="btn" data-sync-start>Sync again</button>
+    {% else %}
+    <button type="button" class="btn primary" data-sync-start {{ 'hidden' if job.running }}>Start the first sync</button>
+    <a class="btn{{ ' primary' if job.running }}" data-sync-next href="/setup?step=connect">{{ 'Continue while it runs' if job.running else 'Skip for now' }}</a>
+    {% endif %}
+  </div>
+</section>
+
+{% else %}
+<section class="su-panel" id="connect">
+  <p class="su-of">Step 5 of 5</p>
+  <h1 tabindex="-1">Connect your AI assistant</h1>
+  <p class="su-intro">Let your AI app read the archive, so you can ask about your chats in plain words. It is read-only, and the archive stays on this computer.</p>
+  <ul class="su-apps">
+    {% for c in clients|sort(attribute="found", reverse=true) %}
+    <li class="{{ 'found' if c.found else 'missing' }}">
+      <span class="app">{{ c.label }}</span>
+      {% if c.found %}
+      <span class="su-state">Found on this computer</span>
+      <button type="button" class="btn" data-connect="{{ c.key }}">Connect</button>
+      {% else %}
+      <span class="su-state">not found on this computer</span>
+      {% endif %}
+      <p class="result" data-result="{{ c.key }}" hidden></p>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="su-small">After connecting, quit and reopen the app. Commands for each app, and snippets to paste by hand, are on the <a href="/connect">Connect AI</a> page. ChatGPT, claude.ai and other remote MCP apps reach Dotiphant through remote access; see {{ remote_docs }}.</p>
+
+  <h2 class="su-sub">Keep it fresh</h2>
+  {% if schedule.installed is none %}
+  <p class="su-small">Background refresh is not set up automatically on this system. Run <code>dotiphant schedule install</code> in a terminal to see how.</p>
+  {% else %}
+  <label class="su-opt"><input type="checkbox" data-schedule {{ 'checked' if schedule.installed }}><span><b>Refresh in the background every {{ every }} minutes</b><small>Fetches new messages while this computer is on.</small></span></label>
+  <p class="result" data-schedule-result hidden></p>
+  {% endif %}
+
+  <div class="su-actions su-finish">
+    <a class="btn primary" href="/">Open your archive</a>
+    {% if job.running %}<span class="su-small">The first sync is still running. Chats appear as they arrive.</span>{% endif %}
+  </div>
+</section>
+{% endif %}
+</div>
+
+  <aside class="su-note" aria-label="Good to know">
+    <p class="su-label">Good to know</p>
+    <p>Dotiphant is an unofficial app that uses the Telegram API. It is not made by Telegram.</p>
+    <p>It logs in as you and only reads: it never sends, edits or deletes anything. Your key, your login and the archive stay in the Dotiphant folder on this computer.</p>
+</aside>
+
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+# Full local check before a push: tests, pyflakes, package build, and the site build
+# when site/ changed. Skip all hooks once with HUSKY=0.
+
+# Husky sets a repo-local core.hooksPath, which hides any global hooks. Run the global one first.
+# Git sends the refs being pushed on stdin; keep a copy for the global hook and for us.
+refs=$(cat)
+g=$(git config --global --type=path core.hooksPath || true)
+if [ -n "$g" ] && [ -x "$g/pre-push" ]; then
+  printf '%s\n' "$refs" | "$g/pre-push" "$@" || exit $?
+fi
+
+export UV_DEFAULT_INDEX=https://pypi.org/simple DOTIPHANT_SECRETS=file
+zero=0000000000000000000000000000000000000000
+
+# Build the site only when a pushed ref changes site/ compared to the remote.
+# A new branch or a missing remote commit counts as changed.
+site=0
+while read -r _ lsha _ rsha; do
+  [ -z "$lsha" ] && continue
+  [ "$lsha" = "$zero" ] && continue
+  if [ "$rsha" = "$zero" ] || ! git cat-file -e "$rsha^{commit}" 2>/dev/null; then
+    site=1
+  elif [ -n "$(git diff --name-only "$rsha" "$lsha" -- site)" ]; then
+    site=1
+  fi
+done <<EOF
+$refs
+EOF
+
+step() {
+  name=$1; shift
+  start=$(date +%s)
+  echo "pre-push: $name"
+  "$@" || { echo "pre-push: $name failed. Fix it, or skip once with HUSKY=0 git push."; exit 1; }
+  echo "pre-push: $name ok ($(( $(date +%s) - start ))s)"
+}
+
+total=$(date +%s)
+out=$(mktemp -d)
+trap 'rm -f "$out"/* "$out"/.gitignore; rmdir "$out"' EXIT
+
+step "pytest" uv run pytest -q
+step "pyflakes" uvx --quiet pyflakes src tests
+step "uv build" uv build --quiet --out-dir "$out"
+if [ "$site" = 1 ]; then
+  [ -d site/node_modules ] || step "site install" pnpm --dir site install --frozen-lockfile
+  step "site build" pnpm --dir site build
+else
+  echo "pre-push: site/ unchanged, skipping the site build"
+fi
+echo "pre-push: all checks passed in $(( $(date +%s) - total ))s"

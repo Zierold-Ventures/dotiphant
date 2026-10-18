@@ -1,0 +1,275 @@
+# Releases Dotiphant. See docs/releasing.md.
+#
+# Primary path: on every push to main, release-please opens or updates a release PR
+# that bumps the version and the changelog. Merging that PR creates the tag and the
+# GitHub release, and the jobs below test, build and publish in the same run. They
+# must live in this workflow: a tag created with GITHUB_TOKEN does not trigger
+# other workflows.
+#
+# Fallback path: pushing a tag vX.Y.Z by hand runs the same test, build and publish
+# jobs, and creates the GitHub release from the tag message.
+#
+# Where a release goes:
+#   0.x   GitHub release assets (what users install: sdist, wheel, constraints.txt,
+#         SHA256SUMS, with build provenance attestations), plus TestPyPI as a dry run of
+#         the publish step. Never real PyPI.
+#   1.0+  The same GitHub release assets, and PyPI.
+#
+# The trusted publishers on PyPI and TestPyPI are registered for this file
+# (release.yml) and the environments "pypi" and "testpypi". Renaming any of them
+# breaks publishing.
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Decides whether this run publishes, and which tag. Runs after release-please
+  # on main, or straight away for a tag pushed by hand.
+  plan:
+    needs: release-please
+    if: >-
+      !cancelled() && (
+        needs.release-please.outputs.release_created == 'true' ||
+        startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      manual: ${{ steps.plan.outputs.manual }}
+    steps:
+      - id: plan
+        env:
+          RP_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          if [ -n "$RP_TAG" ]; then
+            echo "tag=$RP_TAG" >> "$GITHUB_OUTPUT"
+            echo "manual=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            echo "manual=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: plan
+    uses: ./.github/workflows/test.yml
+
+  build:
+    needs: [plan, test]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      major: ${{ steps.version.outputs.major }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+      - uses: astral-sh/setup-uv@v10.3.0
+      - name: Check that the tag matches the project version
+        id: version
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          version=$(uv version --short)
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG does not match version $version in pyproject.toml"
+            exit 1
+          fi
+          for v in $(jq -r '.version, .packages[].version' server.json); do
+            if [ "$v" != "$version" ]; then
+              echo "server.json has version $v, expected $version"
+              exit 1
+            fi
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major=${version%%.*}" >> "$GITHUB_OUTPUT"
+      - name: Build sdist and wheel
+        run: uv build
+      # constraints.txt pins every dependency to the version in uv.lock, the one the
+      # tests ran with. install.sh passes it to `uv tool install --constraints`.
+      # It and SHA256SUMS stay out of dist/, so the PyPI upload sees only the sdist
+      # and wheel. SHA256SUMS lists bare file names, so `sha256sum -c` works next to
+      # the downloaded files.
+      - name: Write constraints.txt and SHA256SUMS
+        run: |
+          mkdir checksums
+          uv export --frozen --no-dev --no-hashes --no-emit-project -o checksums/constraints.txt
+          { (cd dist && sha256sum -- *); (cd checksums && sha256sum -- constraints.txt); } > checksums/SHA256SUMS
+          cat checksums/SHA256SUMS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-package-distributions
+          path: dist/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-checksums
+          path: |
+            checksums/SHA256SUMS
+            checksums/constraints.txt
+
+  # SLSA build provenance for the sdist, the wheel, constraints.txt and SHA256SUMS,
+  # signed with Sigstore and stored by GitHub. Check one with:
+  #   gh attestation verify FILE --repo Zierold-Ventures/dotiphant
+  # Its own job, so the build step never holds an OIDC token. A failure never
+  # blocks the release.
+  attest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-checksums
+          path: checksums/
+      - name: Check the files against SHA256SUMS
+        run: cp checksums/constraints.txt dist/ && cd dist && sha256sum -c ../checksums/SHA256SUMS
+      - name: Attest build provenance
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/*
+            checksums/SHA256SUMS
+
+  # 0.x only: a dry run of the publish step. Users never install from TestPyPI.
+  publish-testpypi:
+    needs: build
+    if: needs.build.outputs.major == '0'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/dotiphant
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+      # Trusted publishing; PEP 740 attestations are on by default.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # 1.0 and later only.
+  publish-pypi:
+    needs: build
+    if: needs.build.outputs.major != '0'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dotiphant
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+      # Trusted publishing; PEP 740 attestations are on by default.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Every version. For 0.x these assets are how users install Dotiphant (install.sh,
+  # which checks the wheel and constraints.txt against SHA256SUMS).
+  github-release:
+    needs: [plan, build, attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-checksums
+          path: dist/
+      # Notes come from docs/release-notes/<tag>.md when that file exists. Otherwise
+      # release-please's generated notes stay, or, for a hand-pushed tag, the tag message.
+      - name: Attach the dist files and set the notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          MANUAL: ${{ needs.plan.outputs.manual }}
+        run: |
+          notes="docs/release-notes/$TAG.md"
+          if [ "$MANUAL" = "true" ]; then
+            if [ ! -f "$notes" ]; then
+              git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+              git tag -l --format='%(contents)' "$TAG" > "$RUNNER_TEMP/notes.md"
+              notes="$RUNNER_TEMP/notes.md"
+            fi
+            gh release create "$TAG" dist/* --title "$TAG" --notes-file "$notes" --verify-tag
+          else
+            gh release upload "$TAG" dist/* --clobber
+            if [ -f "$notes" ]; then
+              gh release edit "$TAG" --notes-file "$notes"
+            fi
+          fi
+
+  # Publishes server.json to the official MCP registry. Runs only after a PyPI
+  # publish (1.0 and later), since server.json points at the PyPI package, and only
+  # when the repo variable MCP_PUBLISH is "true" (Settings > Secrets and variables >
+  # Actions > Variables).
+  mcp-registry:
+    needs: [plan, publish-pypi]
+    if: vars.MCP_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+      - name: Install mcp-publisher
+        run: |
+          os=$(uname -s | tr '[:upper:]' '[:lower:]')
+          arch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_${os}_${arch}.tar.gz" \
+            | tar xz mcp-publisher
+      - name: Log in with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+      # The registry checks that the version exists on PyPI, which can take a minute to show up.
+      - name: Publish server.json
+        run: |
+          for i in 1 2 3 4 5; do
+            ./mcp-publisher publish && exit 0
+            echo "Attempt $i failed, retrying in 30s"
+            sleep 30
+          done
+          exit 1

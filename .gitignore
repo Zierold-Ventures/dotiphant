@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+dist/
+*.db
+*.db-wal
+*.db-shm
+*.session
+.DS_Store
+node_modules/
+.coverage
+.env*
+!.env.example
+*.sqlite*
+.ruff_cache/
+
+# Local planning notes, never committed
+docs/temp/

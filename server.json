@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Zierold-Ventures/dotiphant",
+  "title": "Dotiphant",
+  "description": "Search and read your Telegram chats from a local, read-only archive on your own computer.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/Zierold-Ventures/dotiphant",
+    "source": "github"
+  },
+  "websiteUrl": "https://dotiphant.com",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "dotiphant",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "DOTIPHANT_HOME",
+          "description": "Folder with the archive and settings. Defaults to the platform data folder.",
+          "isRequired": false
+        },
+        {
+          "name": "DOTIPHANT_SECRETS",
+          "description": "Where secrets are stored: keyring (the system keyring, the default) or file (files under DOTIPHANT_HOME, readable only by you).",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}

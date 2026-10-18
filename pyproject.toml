@@ -1,0 +1,70 @@
+[project]
+name = "dotiphant"
+version = "0.1.0"
+description = "Your Telegram chats as a local, searchable archive that AI assistants can read."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["telegram", "mcp", "archive", "ai", "search", "local-first", "claude", "model-context-protocol"]
+# No "License ::" classifier: `license` above is a PEP 639 expression, and PyPI
+# rejects uploads that carry both.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Chat",
+    "Topic :: System :: Archiving",
+]
+authors = [
+    { name = "Joris Zierold", email = "13258954+JorisZierold@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "jinja2>=3.1.6,<4",
+    "keyring>=25.7.0,<26",
+    "mcp>=2.2.0,<3",
+    "qrcode>=8.2,<9",
+    "starlette>=1.7.0,<2",
+    "telethon>=1.45.0,<2",
+    "uvicorn>=0.54.0,<1",
+]
+
+[project.urls]
+Homepage = "https://dotiphant.com"
+Issues = "https://github.com/Zierold-Ventures/dotiphant/issues"
+Documentation = "https://github.com/Zierold-Ventures/dotiphant/tree/main/docs"
+Source = "https://github.com/Zierold-Ventures/dotiphant"
+Changelog = "https://github.com/Zierold-Ventures/dotiphant/releases"
+
+[project.scripts]
+dotiphant = "dotiphant.cli:main"
+phant = "dotiphant.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.16,<0.13.0"]
+build-backend = "uv_build"
+
+# Resolve from public PyPI even where a machine-wide uv config points at a private index.
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

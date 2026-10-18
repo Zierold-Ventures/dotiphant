@@ -1,0 +1,6 @@
+# Husky sets a repo-local core.hooksPath, which hides any global hooks.
+# Run the global commit-msg hook first (it may rewrite the message), then lint.
+g=$(git config --global --type=path core.hooksPath || true)
+if [ -n "$g" ] && [ -x "$g/commit-msg" ]; then "$g/commit-msg" "$@" || exit $?; fi
+
+commitlint --edit "$1"

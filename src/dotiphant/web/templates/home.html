@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_avatar.html" import avatar %}
+{% block body_class %}page-home{% endblock %}
+{% macro chat_row(c) %}
+<li data-title="{{ c.title|lower }}{% if c.username %} @{{ c.username|lower }}{% endif %}" data-kind="{{ c.filter }}">
+  <a href="/chat/{{ c.chat_id }}">
+    {{ avatar(c, 32, 'mono') }}
+    <span class="name">{{ c.title }}</span>
+    <span class="info"><span class="sr">, </span>{% if c.ai_hidden %}<span class="src" title="AI apps cannot read this chat">Hidden from AI</span><span class="sr">,</span> {% endif %}{% if c.source == 'whatsapp' %}<span class="src">WhatsApp</span> {% endif %}{{ KIND_LABELS.get(c.kind, c.kind) }}{% if c.is_forum %} with topics{% endif %}{% if c.archived %}, archived{% endif %}, <span class="count">{{ "{:,}".format(c.message_count) }}</span> message{{ '' if c.message_count == 1 else 's' }}</span>
+    {% if c.last_message_at %}<time class="when" datetime="{{ c.last_message_at }}" title="{{ c.last_message_at }}"><span class="sr">, last message </span>{{ c.last_message_at|short_when }}</time>{% endif %}
+  </a>
+  <button type="button" class="star{{ ' on' if c.fav }}" data-star="{{ c.chat_id }}" data-reload="1"
+    title="{{ 'Remove from favorites' if c.fav else 'Add to favorites' }}" aria-label="{{ 'Remove ' ~ c.title ~ ' from favorites' if c.fav else 'Add ' ~ c.title ~ ' to favorites' }}" aria-pressed="{{ 'true' if c.fav else 'false' }}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l1.9 4.1 4.5.5-3.3 3 .9 4.4L8 11.4l-4 2.2.9-4.4-3.3-3 4.5-.5z"/></svg></button>
+</li>
+{% endmacro %}
+{% block top %}
+{% if chats %}
+<header class="page-head">
+  <h1>Your Telegram archive</h1>
+  <p class="lede"><span class="fig">{{ "{:,}".format(overview.chats) }}</span> chats, <span class="fig">{{ "{:,}".format(overview.messages) }}</span> messages. Last sync <time datetime="{{ last_sync or '' }}" title="{{ last_sync or '' }}">{{ last_sync|relative }}</time>. Times in UTC.</p>
+  {% if sync_error %}<p class="warn" role="status">The last sync failed: {{ sync_error }}</p>{% endif %}
+  {% if sync_warning %}<p class="warn" role="status">{{ sync_warning }}</p>{% endif %}
+</header>
+{% if demo %}
+<aside class="idle-card" aria-label="About the demo">
+  <figure class="lens-art" aria-hidden="true">{{ art('lens') }}</figure>
+  <div><p><b>This is the demo.</b>These chats are made up, so there is nothing to sync.</p><p>Run <code>dotiphant open</code> to read your own chats here.</p></div>
+</aside>
+{% elif job.running and job.job != 'media' %}
+<aside class="idle-card" aria-label="Sync running">
+  <figure class="lens-art walking" aria-hidden="true">{{ art('lens') }}</figure>
+  <div><p><b>Sync running.</b>Reading new messages. Only reading.</p><p>New messages show up here when the sync is done.</p></div>
+</aside>
+{% endif %}
+<form class="find find-all" action="/search" role="search">
+  <input type="search" name="q" placeholder="Search all messages" aria-label="Search all messages">
+  <button class="btn secondary">Search</button>
+</form>
+<div class="listbar">
+  <span class="filter-wrap"><input type="search" id="chat-filter" class="filter" placeholder="Filter chats by name" aria-label="Filter chats by name" aria-keyshortcuts="/"><kbd class="key" aria-hidden="true" title="Press / to filter">/</kbd></span>
+  <span class="seg" role="group" aria-label="Show">
+    <button type="button" class="on" data-kind-filter="" aria-pressed="true">All</button>
+    <button type="button" data-kind-filter="people" aria-pressed="false">People</button>
+    <button type="button" data-kind-filter="groups" aria-pressed="false">Groups</button>
+    <button type="button" data-kind-filter="channels" aria-pressed="false">Channels</button>
+  </span>
+</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% if not chats %}
+<section class="onboarding idle-state" aria-labelledby="empty-h">
+  <figure class="lens-art is-empty" aria-hidden="true">{{ art('lens') }}</figure>
+  <div>
+    <h1 id="empty-h">Nothing to remember yet.</h1>
+    <p>Run your first sync, or import a Telegram or WhatsApp export. Dotiphant keeps a private copy of your chats on this computer, so you can read and search them here and let your AI assistant read them too.</p>
+    <div class="actions">
+      <a class="btn primary" href="/setup">Start sync</a>
+    </div>
+    <ol class="numbered">
+      <li><span><a href="/setup">Set up Dotiphant here in the browser</a>. It logs in with your own Telegram account, read-only, and fetches your chats. You can also run <code>dotiphant setup</code> in a terminal.</span></li>
+      <li><span>To import a file instead, run <code>dotiphant import</code> with a Telegram Desktop JSON export or a WhatsApp chat export.</span></li>
+    </ol>
+    <p class="muted">Just looking around? Run <code>dotiphant demo</code> to open a sample archive with made-up chats.</p>
+  </div>
+</section>
+{% else %}
+{% if favorites %}
+<h2 class="section">Favorites</h2>
+<ul class="chats" data-list data-rove>{% for c in favorites %}{{ chat_row(c) }}{% endfor %}</ul>
+<h2 class="section">All chats</h2>
+{% endif %}
+<ul class="chats" data-list data-rove>{% for c in chats if not c.fav %}{{ chat_row(c) }}{% endfor %}</ul>
+<p class="empty" id="no-match" hidden>No chats match. Try another name or show all kinds.</p>
+{% endif %}
+{% endblock %}

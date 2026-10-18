@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_avatar.html" import avatar %}
+{% block body_class %}page-search{% endblock %}
+{% block top %}
+<header class="page-head"><h1>Search</h1></header>
+<form class="find search-form" action="/search" role="search">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search messages" aria-label="Search messages" aria-keyshortcuts="/"{{ ' autofocus' if not q }}>
+  <select name="chat" aria-label="Chat">
+    <option value="">All chats</option>
+    {% for c in chats %}<option value="{{ c.chat_id }}"{{ ' selected' if c.chat_id == chat_id }}>{{ c.title }}</option>{% endfor %}
+  </select>
+  <select name="since" aria-label="Time range">
+    {% for value, label in [('', 'Any time'), ('24h', 'Last 24 hours'), ('7d', 'Last 7 days'), ('30d', 'Last 30 days'), ('365d', 'Last year')] %}
+    <option value="{{ value }}"{{ ' selected' if value == since }}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn primary">Search</button>
+</form>
+{% endblock %}
+{% block content %}
+{% if error %}
+<div class="state" role="alert">
+  <h2>Search did not work</h2>
+  <p>{{ error }}</p>
+</div>
+{% elif not q %}
+<div class="state">
+  <h2>Search every message in your archive</h2>
+  <p>Type a word or a name. Put a phrase in "quotes" to match it exactly, or use OR to find either word.</p>
+</div>
+{% elif not hits %}
+<div class="idle-state" role="status">
+  <figure class="lens-art is-empty" aria-hidden="true">{{ art('lens') }}</figure>
+  <div>
+    <h2>No messages match "{{ q }}". Not even an old one.</h2>
+    <p>{% if chat_id or since %}Try fewer words, another spelling, or search all chats at any time.{% else %}Try fewer words, another spelling, or a different chat.{% endif %}</p>
+  </div>
+</div>
+{% else %}
+{% set ns = namespace(order=[]) %}
+{% for h in hits %}{% if h.chat_title not in ns.order %}{% set ns.order = ns.order + [h.chat_title] %}{% endif %}{% endfor %}
+<p class="hits-count" role="status">{{ hits|length }}{% if hits|length == 200 %}+{% endif %} matching message{{ '' if hits|length == 1 else 's' }}{% if ns.order|length > 1 %} in {{ ns.order|length }} chats{% endif %}, newest first.</p>
+<div class="hits">
+{% for title in ns.order %}
+{% set group = hits|selectattr('chat_title', 'equalto', title)|list %}
+{% if not chat_id %}<h2 class="hits-chat">{{ avatar(chat_map.get(group[0].chat_id) or {'chat_id': group[0].chat_id, 'title': title}, 24) }}<a href="/chat/{{ group[0].chat_id }}">{{ title }}</a> <span class="n">{{ group|length }}</span></h2>{% endif %}
+<ol data-rove>
+{% for h in group %}
+<li><a class="hit" href="/chat/{{ h.chat_id }}?at={{ h.message_id }}#{{ h.anchor }}">
+  <time class="stamp" datetime="{{ h.date }}" title="{{ h.date }}"><span class="d">{{ h.date|short_day }}</span> <span class="t">{{ h.date[11:16] }}</span></time>
+  <span class="body">
+    <span class="meta">
+      {% if chat_id or h.sender != title %}<span class="who {{ h.color }}">{{ h.sender }}</span>{% else %}<span class="sr">{{ h.sender }}</span>{% endif %}
+      {% if h.topic %}<span class="where">in {{ h.topic }}</span>{% endif %}
+    </span>
+    <span class="text">{{ h.snippet_html }}</span>
+  </span>
+</a></li>
+{% endfor %}
+</ol>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

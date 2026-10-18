@@ -1,0 +1,47 @@
+# Checks commit messages against Conventional Commits (commitlint.config.mjs).
+# Pull requests: only the PR's own commits. Pushes to main: the commits since
+# the previous tip, or only the pushed commit when there is no previous tip.
+name: commitlint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: "0"
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint commit messages
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            from=$PR_BASE
+            to=$PR_HEAD
+          elif git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            from=$BEFORE
+            to=$GITHUB_SHA
+          else
+            # First push of a branch, or a rewritten tip: check the pushed commit only.
+            pnpm exec commitlint --last --verbose
+            exit 0
+          fi
+          pnpm exec commitlint --from "$from" --to "$to" --verbose
