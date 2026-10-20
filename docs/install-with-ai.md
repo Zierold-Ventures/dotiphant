@@ -76,7 +76,7 @@ Then guide the user through the five steps on the page. They type everything the
 
 1. API key. Telegram requires every app to have an API id and hash, and the user creates their own:
    - The page links to https://my.telegram.org. Enter the phone number in international format, like +49 151 12345678. Telegram sends a code to the Telegram app (not by SMS).
-   - Click "API development tools" and fill in the form. App title and short name can be anything, for example "Dotiphant" and "dotiphant" (the short name takes 5 to 32 letters or digits). Platform: Desktop. Click "Create application".
+   - Click "API development tools" and fill in the form. App title and short name can be anything, for example "Dotiphant" and "dotiphant" (the short name takes 5 to 32 letters or digits). Platform: Desktop. URL and description can stay empty. Click "Create application".
    - If the site only shows "ERROR", try again later, without a VPN, or in another browser.
    - Copy "App api_id" and "App api_hash" into the two fields on the setup page. If saved values are wrong, the page offers "Replace them".
 2. Log in. The page shows a QR code. On the phone: Telegram > Settings > Devices > Link Desktop Device, then point the camera at the code. If the account has a two-step verification password, the page asks for it. "Log in with your phone number instead" works too.
