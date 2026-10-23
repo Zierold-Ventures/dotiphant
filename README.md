@@ -6,7 +6,7 @@ Your Telegram chats, searchable on your own computer and readable by your AI ass
 
 AI assistants can't read your Telegram. Bots only see messages sent after they join, never the history. Cloud CRMs that sync Telegram want your account on their servers. Dotiphant logs in as you, copies your chats into a single file on your own computer, and lets your AI assistant read that file when you ask it to.
 
-![Dotiphant viewer](docs/img/chat.webp)
+![Claude answers "What did I miss in my Telegram chats this week?" with links to the messages, and one link opens the chat in the Dotiphant viewer (made-up demo chats)](docs/img/demo.gif)
 
 ## What you get
 
