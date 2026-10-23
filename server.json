@@ -3,7 +3,7 @@
   "name": "io.github.Zierold-Ventures/dotiphant",
   "title": "Dotiphant",
   "description": "Search and read your Telegram chats from a local, read-only archive on your own computer.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "url": "https://github.com/Zierold-Ventures/dotiphant",
     "source": "github"
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "dotiphant",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
