@@ -406,7 +406,7 @@ def step_settings(args) -> config.Settings:
     if not args.yes and sys.stdin.isatty():
         say()
         say("What should Dotiphant archive? Press Enter to keep the suggestion.")
-        s.include_private = _confirm("  Chats with people?", s.include_private)
+        s.include_private = _confirm("  Chats with people and bots?", s.include_private)
         s.include_groups = _confirm("  Groups?", s.include_groups)
         s.include_channels = _confirm("  Channels you follow (broadcast only, often large)?", s.include_channels)
         default = "all" if s.history_days is None else str(s.history_days)

@@ -424,7 +424,7 @@ class _Runner:
         if archived and not s.include_archived:
             return False
         return {
-            "private": s.include_private, "bot": s.include_bots, "group": s.include_groups,
+            "private": s.include_private, "bot": s.include_private, "group": s.include_groups,
             "supergroup": s.include_groups, "channel": s.include_channels,
         }.get(kind, False)
 

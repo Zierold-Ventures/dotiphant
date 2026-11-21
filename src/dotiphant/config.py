@@ -70,10 +70,9 @@ def status_path() -> Path:
 class Settings:
     """User choices saved in settings.json. Unknown keys are ignored."""
 
-    include_private: bool = True  # one-to-one chats with people
+    include_private: bool = True  # one-to-one chats with people and with bots
     include_groups: bool = True  # basic groups, supergroups and forums
     include_channels: bool = False  # broadcast channels
-    include_bots: bool = False  # chats with bots
     include_archived: bool = True  # chats in the Telegram "Archived" folder
     history_days: int | None = 365  # how far back the first sync goes; None means everything
     excluded_chats: list[int] = field(default_factory=list)
