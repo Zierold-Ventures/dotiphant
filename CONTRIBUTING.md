@@ -51,7 +51,7 @@ With squash merges, the PR title becomes the commit message, so write it the sam
 
 ## Git hooks
 
-`pnpm install` at the repo root installs [husky](https://typicode.github.io/husky/) hooks from `.husky/`. Each hook first runs your global hook of the same name, if `git config --global core.hooksPath` points to one, because husky's repo-local hooks path would hide it.
+`pnpm install` at the repo root installs [husky](https://typicode.github.io/husky/) hooks from `.husky/`. Husky's repo-local hooks path hides your global hooks (`git config --global core.hooksPath`). So `pre-commit` and `commit-msg` first run your global hook of the same name, if there is one. `pre-push` does not: it runs only the repo's checks, so a global pre-push hook that runs `.husky/pre-push` cannot loop.
 
 - commit-msg: runs commitlint on the message.
 - pre-commit, on staged files only and in a few seconds:
@@ -62,4 +62,4 @@ With squash merges, the PR title becomes the commit message, so write it the sam
   - rejects em and en dashes, curly quotes and the ellipsis character in Markdown under `docs/` and in `README.md`, `CONTRIBUTING.md` and `CHANGELOG.md`.
 - pre-push: `uv run pytest -q`, `uvx pyflakes src tests`, `uv build` to a temp folder, and `pnpm --dir site build` when the push changes `site/`. It prints the time for each step.
 
-To skip all hooks once, set `HUSKY=0`: `HUSKY=0 git commit ...` or `HUSKY=0 git push`. This also skips your global hooks for that command. CI still runs the tests and commitlint.
+To skip all hooks once, set `HUSKY=0`: `HUSKY=0 git commit ...` or `HUSKY=0 git push`. This also skips your global `pre-commit` and `commit-msg` hooks for that command. CI still runs the tests and commitlint.
