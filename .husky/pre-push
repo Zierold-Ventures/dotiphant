@@ -1,13 +1,10 @@
 # Full local check before a push: tests, pyflakes, package build, and the site build
 # when site/ changed. Skip all hooks once with HUSKY=0.
 
-# Husky sets a repo-local core.hooksPath, which hides any global hooks. Run the global one first.
-# Git sends the refs being pushed on stdin; keep a copy for the global hook and for us.
+# This hook runs only the repo's own checks. It never calls a global pre-push hook: a
+# global hook that runs this file would call it back endlessly.
+# Git sends the refs being pushed on stdin.
 refs=$(cat)
-g=$(git config --global --type=path core.hooksPath || true)
-if [ -n "$g" ] && [ -x "$g/pre-push" ]; then
-  printf '%s\n' "$refs" | "$g/pre-push" "$@" || exit $?
-fi
 
 export UV_DEFAULT_INDEX=https://pypi.org/simple DOTIPHANT_SECRETS=file
 zero=0000000000000000000000000000000000000000
