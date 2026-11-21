@@ -8,6 +8,10 @@ Dotiphant logs in the same way Telegram Desktop does, only reads, and slows down
 
 No. Secret chats are end-to-end encrypted between two devices and never reach Telegram's servers in readable form, so no other app can read them.
 
+## Are chats with bots included?
+
+Yes. Chats with bots sync with your chats with people, including the messages a bot sends you, and AI apps can read them like any other chat. To keep one bot from AI apps, hide it with `dotiphant ai hide`. To stop archiving it, delete it with `dotiphant forget`.
+
 ## Why are channels off by default?
 
 Channels are often large and are already public or easy to reread in Telegram. Turn them on with `dotiphant setup --reconfigure`.

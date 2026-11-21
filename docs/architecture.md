@@ -62,7 +62,7 @@ Every change goes through `config.update_settings(change)`: it takes `settings.l
 
 | Key | Meaning |
 | --- | --- |
-| `include_private`, `include_groups`, `include_channels`, `include_bots`, `include_archived` | Which kinds of chats sync archives |
+| `include_private`, `include_groups`, `include_channels`, `include_archived` | Which kinds of chats sync archives. `include_private` covers chats with people and with bots |
 | `history_days` | How far back the first sync goes; `null` means everything |
 | `excluded_chats` | Chats sync skips |
 | `favorites` | Chats starred in the viewer |

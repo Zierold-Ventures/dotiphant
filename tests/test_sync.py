@@ -212,8 +212,9 @@ async def test_settings_filters_and_private_chat_senders():
     conn = db.connect(readonly=True)
     chats = {r["chat_id"]: dict(r) for r in conn.execute("SELECT * FROM chats")}
     conn.close()
-    assert set(chats) == {20, -800}
+    assert set(chats) == {20, 30, -800}
     assert chats[20]["kind"] == "private" and chats[20]["title"] == "Bob"
+    assert chats[30]["kind"] == "bot"
     assert chats[-800]["kind"] == "group" and chats[-800]["archived"] == 1
     private = rows(20)
     assert private[1]["sender_id"] == 20 and private[1]["out"] == 0
@@ -223,6 +224,43 @@ async def test_settings_filters_and_private_chat_senders():
     # Explicitly requested chats are synced even when the type filter would skip them.
     await sync.run_sync([utils.get_peer_id(news)], client=client, settings=config.Settings())
     assert len(rows(utils.get_peer_id(news))) == 1
+
+
+async def test_bot_chats_sync_and_are_readable_by_ai_apps():
+    from dotiphant import mcp_server
+
+    alerts = fakes.user(40, "Planindex Alerts", bot=True, username="PlanindexAlertsBot")
+    peer = types.PeerUser(40)
+    # Recent dates, so recent_activity sees them.
+    base = int((dt.datetime.now(dt.timezone.utc) - fakes.START).total_seconds() // 60) - 60
+    client = FakeClient()
+    client.add_chat(alerts, [
+        msg(peer, 1, "/start", out=True, minutes=base),
+        msg(peer, 2, "Alert: index rebuild failed", minutes=base + 1),
+        msg(peer, 3, "Alert: index rebuild recovered", minutes=base + 2),
+    ])
+    # Default settings, as on a fresh install: no option has to be turned on for bots.
+    await sync.run_sync(client=client, settings=config.Settings(history_days=None))
+
+    chat = one("SELECT kind, title, username FROM chats WHERE chat_id=40")
+    assert tuple(chat) == ("bot", "Planindex Alerts", "PlanindexAlertsBot")
+    stored = rows(40)
+    assert set(stored) == {1, 2, 3}
+    assert stored[1]["out"] == 1 and stored[1]["sender_id"] == 1
+    assert stored[2]["out"] == 0 and stored[2]["sender_id"] == 40  # sent by the bot to me
+    assert one("SELECT is_bot FROM senders WHERE peer_id=40")[0] == 1
+
+    listed = mcp_server.list_chats(kind="bot")
+    assert "40 | Planindex Alerts @PlanindexAlertsBot | bot" in listed
+    assert "Planindex Alerts" in mcp_server.list_chats(query_text="Planindex")
+    out = mcp_server.get_messages("@PlanindexAlertsBot")
+    assert "index rebuild failed" in out and "index rebuild recovered" in out and "/start" in out
+    assert "Planindex Alerts" in mcp_server.recent_activity("24h")
+    assert "Planindex Alerts" in mcp_server.recent_activity("24h", kind="bot")
+
+    # Hiding works for bot chats like for any other chat.
+    config.update_settings(lambda s: s.set_ai_visible([40], False))
+    assert "No chats match" in mcp_server.list_chats(kind="bot")
 
 
 async def test_upgraded_basic_group_history_is_merged():
